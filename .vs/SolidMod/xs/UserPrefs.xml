@@ -1,6 +1,6 @@
 ﻿<Properties StartupConfiguration="{B6A08C1E-96FA-4C66-81C3-F2B73DFC349D}|Default">
   <MonoDevelop.Ide.ItemProperties.SolidMod PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.Workbench ActiveDocument="SolidModule.cs">
     <Files>
       <File FileName="SolidModule.cs" Line="192" Column="21" />
       <File FileName="SolidSettings.cs" Line="29" Column="34" />
