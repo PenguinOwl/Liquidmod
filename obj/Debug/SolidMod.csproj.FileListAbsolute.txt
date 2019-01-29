@@ -1,6 +1,0 @@
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod/obj/Debug/SolidMod.csprojAssemblyReference.cache
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod/obj/Debug/SolidMod.csproj.CoreCompileInputs.cache
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod/obj/Debug/SolidMod.dll
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod/obj/Debug/SolidMod.pdb
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod.dll
-/home/henryboles/.local/share/Steam/steamapps/common/Celeste/Mods/SolidMod/SolidMod.pdb

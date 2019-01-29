@@ -24,12 +24,14 @@ namespace Celeste.Mod.Solid
 
         public string Dash2Color { get; set; } = "ffffff";
 
+/*
         public bool Badeline { get; set; } = false;
 
         public bool BadelineFloat { get; set; } = false;
 
         [SettingRange(1, 100)]
         public int HairLength { get; set; } = 4;
+*/
         // SettingName also works on props, defaulting to
         // modoptions_[typename without settings]_[propname]
 
