@@ -76,7 +76,7 @@ namespace Celeste.Mod.Solid
 
         void PlayerHair_Update(On.Celeste.PlayerHair.orig_Update orig, PlayerHair self)
         {
-            if ((self.Entity as BadelineOldsite) == null && ((self.Entity as Player) != null && Settings.HairLength != HairCount))
+            if (!(self.Entity is BadelineOldsite) && self.Entity is Player && Settings.HairLength != HairCount))
             {
                 Player player = self.Entity as Player;
                 player.Sprite.HairCount = Settings.HairLength;
@@ -139,12 +139,14 @@ namespace Celeste.Mod.Solid
                 NormalHairColor.SetValue(null, Calc.HexToColor("AC3232"));
                 TwoDashesHairColor.SetValue(null, Calc.HexToColor("FF6DEF"));
                 UsedHairColor.SetValue(null, Calc.HexToColor("44B7FF"));
-                if (((Entity)self as BadelineOldsite) != null)
+                if (self is BadelineOldsite)
                 {
                     self.Sprite.HairCount = Settings.HairLength;
                 }
             }
-            if ((Settings.Badeline) != (self.Sprite.Mode == PlayerSpriteMode.Badeline))
+            bool isBadeline = self.Sprite.Mode == PlayerSpriteMode.Badeline;
+            
+            if (Settings.Badeline || (Settings.Badeline || isBadeline))
             {
                 PlayerSpriteMode mode = self.Sprite.Mode;
                 self.Remove(self.Sprite);
@@ -318,14 +320,21 @@ namespace Celeste.Mod.Solid
         //    }
         //}
 
-        public static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity self, Color color, float duration)
+        public static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity rawSelf, Color color, float duration)
         {
+            if (!Settings.Enabled)
+            {
+                orig(rawSelf, colorOrig, duration);
+            }
+            
+            if (!(rawSelf is Player))
+                return;
+            
+            Player self = (Player) rawSelf;
+            
             Color colorOrig = color;
 
-            if (!(self is Player))
-                return;
-
-            if ((self as Player).Sprite.Mode == PlayerSpriteMode.Badeline)
+            if (self.Sprite.Mode == PlayerSpriteMode.Badeline)
             {
                 orig(self, ColorFromHex("ff0019"), duration);
                 return;
@@ -333,34 +342,22 @@ namespace Celeste.Mod.Solid
 
             Color newColor = color;
 
-            if ((self as Player).StateMachine.State == 19)
+            if (self.StateMachine.State == 19)
                 return;
 
-            if (self is Player)
-            {
+            int dashes = ((Player)self).Dashes;
 
-                int dashes = ((Player)self).Dashes;
+            if (dashes == 0)
+                newColor = ColorFromHex(Settings.Dash0Color);
 
-                if (dashes == 0)
-                    newColor = ColorFromHex(Settings.Dash0Color);
+            if (dashes == 1)
+                newColor = ColorFromHex(Settings.Dash1Color);
 
-                if (dashes == 1)
-                    newColor = ColorFromHex(Settings.Dash1Color);
-
-                if (dashes == 2)
-                    newColor = ColorFromHex(Settings.Dash2Color);
-
-            }
+            if (dashes == 2)
+                newColor = ColorFromHex(Settings.Dash2Color);
 
             color.A = colorOrig.A;
-            if (Settings.Enabled)
-            {
-                orig(self, newColor, duration);
-            }
-            else
-            {
-                orig(self, colorOrig, duration);
-            }
+            orig(rawSelf, newColor, duration);
         }
 
         public static Color GetTrailColor(On.Celeste.Player.orig_GetTrailColor orig, Player self, bool wasDashB)
@@ -372,7 +369,7 @@ namespace Celeste.Mod.Solid
             if (!(self is Player))
                 return colorOrig;
 
-            if ((self as Player).Sprite.Mode == PlayerSpriteMode.Badeline)
+            if (self.Sprite.Mode == PlayerSpriteMode.Badeline)
             {
                 return colorOrig;
             }
