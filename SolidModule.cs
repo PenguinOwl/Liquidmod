@@ -392,29 +392,8 @@ namespace Celeste.Mod.Solid
             return color;
         }
 
-        public static Color ColorFromHex(string colorcode)
-        {
-            colorcode = colorcode.TrimStart('#');
-
-            Color col; // from System.Drawing or System.Windows.Media
-            if (colorcode.Length == 6)
-            {
-                col = new Color(
-                            int.Parse(colorcode.Substring(0, 2), NumberStyles.HexNumber),
-                            int.Parse(colorcode.Substring(2, 2), NumberStyles.HexNumber),
-                            int.Parse(colorcode.Substring(4, 2), NumberStyles.HexNumber),
-                            255
-                                );
-            }
-            else // assuming length of 8
-                col = new Color(
-                            int.Parse(colorcode.Substring(0, 2), NumberStyles.HexNumber),
-                            int.Parse(colorcode.Substring(2, 2), NumberStyles.HexNumber),
-                            int.Parse(colorcode.Substring(4, 2), NumberStyles.HexNumber),
-                            int.Parse(colorcode.Substring(6, 2), NumberStyles.HexNumber)
-            );
-            return col;
+        private static Color ColorFromHex(string hex) {
+            return Calc.HexToColor(hex);
         }
-
     }
 }
