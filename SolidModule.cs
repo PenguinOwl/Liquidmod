@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Reflection;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using On.Monocle;
+using Monocle;
 using Calc = Monocle.Calc;
-using Entity = Monocle.Entity;
 
 namespace Celeste.Mod.Solid
 {
@@ -13,16 +13,24 @@ namespace Celeste.Mod.Solid
         // Only one alive module instance can exist at any given time.
         public static SolidModule Instance;
 
-        private static Color permcolor;
+        private const int FlyHairCountDifference = 3;
+        private const int TwoDashHairCountDifference = 1;
 
-        private static readonly FieldInfo UsedHairColor = typeof(Player).GetField("UsedHairColor");
-        private static readonly FieldInfo NormalHairColor = typeof(Player).GetField("NormalHairColor");
-        private static readonly FieldInfo TwoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
+        private readonly Color _origUsedHairColor = Player.UsedHairColor;
+        private readonly Color _origNormalHairColor = Player.NormalHairColor;
+        private readonly Color _origTwoDashesHairColor = Player.TwoDashesHairColor;
 
-        private static bool Badeline;
+        private readonly FieldInfo _usedHairColor = typeof(Player).GetField("UsedHairColor");
+        private readonly FieldInfo _normalHairColor = typeof(Player).GetField("NormalHairColor");
+        private readonly FieldInfo _twoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
 
-        private static int HairCount;
-        private bool Floating;
+        private bool _enabled;
+        private bool _badeline;
+        private bool _floating;
+
+        private string _dash0Color;
+        private string _dash1Color;
+        private string _dash2Color;
 
         public SolidModule()
         {
@@ -41,184 +49,170 @@ namespace Celeste.Mod.Solid
         // Load runs before Celeste itself has initialized properly.
         public override void Load()
         {
-            //On.Celeste.PlayerHair.GetHairColor += GetHairColor;
-            On.Celeste.Player.GetTrailColor += GetTrailColor;
-            On.Celeste.TrailManager.Add_Entity_Color_float += AddTrail;
-            On.Celeste.DeathEffect.Draw += Death;
-            On.Celeste.Player.IntroRespawnBegin += Player_Respawn;
             On.Celeste.Player.Update += Player_Update;
-            Sprite.Play += Sprite_Play;
-            On.Celeste.PlayerHair.Render += PlayerHair_Render;
-            On.Celeste.PlayerHair.Update += PlayerHair_Update;
+            On.Celeste.Player.GetTrailColor += PlayerOnGetTrailColor;
+            On.Celeste.Player.ctor += PlayerOnCtor;
+            On.Celeste.PlayerHair.Update += PlayerHairOnUpdate;
+            On.Monocle.Sprite.Play += Sprite_Play;
         }
 
 
         // Optional, initialize anything after Celeste has initialized itself properly.
+
         public override void Initialize()
-        { }
+        {
+            _dash0Color = Settings.Dash0Color;
+            _dash1Color = Settings.Dash1Color;
+            _dash2Color = Settings.Dash2Color;
+        }
+
 
         // Optional, do anything requiring either the Celeste or mod content here.
-        //public override void LoadContent()
-        //{
-        //}
+        //public override void LoadContent() { }
 
         // Unload the entirety of your mod's content, remove any event listeners and undo all hooks.
         public override void Unload()
         {
-            //On.Celeste.PlayerHair.GetHairColor -= GetHairColor;
-            On.Celeste.Player.GetTrailColor -= GetTrailColor;
-            On.Celeste.TrailManager.Add_Entity_Color_float -= AddTrail;
-            On.Celeste.DeathEffect.Draw -= Death;
-            On.Celeste.Player.IntroRespawnBegin -= Player_Respawn;
             On.Celeste.Player.Update -= Player_Update;
-            Sprite.Play -= Sprite_Play;
-            On.Celeste.PlayerHair.Render -= PlayerHair_Render;
-            On.Celeste.PlayerHair.Update -= PlayerHair_Update;
+            On.Celeste.Player.GetTrailColor -= PlayerOnGetTrailColor;
+            On.Celeste.Player.ctor -= PlayerOnCtor;
+            On.Celeste.PlayerHair.Update -= PlayerHairOnUpdate;
+            On.Monocle.Sprite.Play -= Sprite_Play;
         }
 
-
-        private void Player_Added(On.Celeste.Player.orig_Render orig, Player self)
+        private void PlayerOnCtor(On.Celeste.Player.orig_ctor orig, Player self, Vector2 position,
+            PlayerSpriteMode spriteMode)
         {
-            //Logger.Log("A", self.GetType().ToString());
-            //PlayerSpriteMode mode = self.Sprite.Mode;
-            //self.Remove(self.Sprite);
-            //if (Settings.Badeline)
-            //{
-            //    self.Sprite = new PlayerSprite(PlayerSpriteMode.Badeline);
-            //}
-            //else
-            //{
-            //    self.Sprite = new PlayerSprite(mode);
-            //}
-            //self.Remove(self.Hair);
-            //self.Sprite.HairCount = Settings.HairLength;
-            //self.Add(self.Hair = new PlayerHair(self.Sprite));
-            //self.Add(self.Sprite);
+            orig(self, position, spriteMode);
 
-            orig(self);
+            self.Add(new Coroutine(SetFlyHairCount(self)));
+            self.Add(new Coroutine(PreventBadelineStuckInFeather(self)));
+
+            if (Settings.Enabled && Settings.Badeline)
+                ResetSprite(self, true);
         }
 
-        private void PlayerHair_Update(On.Celeste.PlayerHair.orig_Update orig, PlayerHair self)
+        private IEnumerator SetFlyHairCount(Player player)
         {
-            if (self.Entity as BadelineOldsite == null && self.Entity as Player != null && Settings.HairLength != HairCount)
+            while (true)
             {
-                Player player = self.Entity as Player;
-                player.Sprite.HairCount = Settings.HairLength;
-                HairCount = Settings.HairLength;
-                player.Remove(player.Hair);
-                PlayerSpriteMode mode = self.Sprite.Mode;
-                player.Remove(player.Sprite);
-                player.Add(player.Hair = new PlayerHair(player.Sprite));
-                player.Add(player.Sprite);
+                while (player.StateMachine.State != Player.StStarFly)
+                    yield return null;
+
+                while (player.Sprite.CurrentAnimationID == "startStarFly")
+                    yield return null;
+
+                while (player.Speed != Vector2.Zero)
+                    yield return null;
+
+                yield return 0.1f;
+
+                if (Settings.Enabled)
+                    player.Sprite.HairCount = Settings.HairLength + FlyHairCountDifference;
+
+                while (player.StateMachine.State == Player.StStarFly)
+                    yield return null;
             }
-
-            if (self.Entity as BadelineOldsite == null && self.Entity as Player != null) self.Sprite.HairCount = Settings.HairLength;
-
-            orig(self);
         }
 
-
-        private void PlayerHair_Render(On.Celeste.PlayerHair.orig_Render orig, PlayerHair self)
+        private IEnumerator PreventBadelineStuckInFeather(Player player)
         {
-            //self.Sprite.HairCount = Settings.HairLength;
-            orig(self);
-        }
-
-
-        private void Sprite_Play(Sprite.orig_Play orig, Monocle.Sprite self, string id, bool restart, bool randomizeFrame)
-        {
-            if (Settings.Badeline)
+            while (true)
             {
-                try
+                while (player.StateMachine.State != Player.StStarFly)
+                    yield return null;
+
+                float stuckTime = 0;
+
+                while (player.Sprite.CurrentAnimationID == "startStarFly" && stuckTime < 0.3f)
                 {
-                    orig(self, id, restart, randomizeFrame);
+                    yield return null;
+                    stuckTime += Engine.DeltaTime;
                 }
-#pragma warning disable RECS0022 // A catch clause that catches System.Exception and has an empty body
-                catch
-                { }
-#pragma warning restore RECS0022 // A catch clause that catches System.Exception and has an empty body
+
+                if (Settings.Badeline)
+                    player.Sprite.Stop();
+
+                while (player.StateMachine.State == Player.StStarFly)
+                    yield return null;
             }
-            else
+        }
+
+        private static void PlayerHairOnUpdate(On.Celeste.PlayerHair.orig_Update orig, PlayerHair self)
+        {
+            orig(self);
+            if (Settings.Enabled && self.Entity is Player player && player.StateMachine.State != Player.StStarFly)
+            {
+                self.Sprite.HairCount = Settings.HairLength;
+                if (player.Dashes > 1)
+                    self.Sprite.HairCount += TwoDashHairCountDifference;
+            }
+        }
+
+        private static Color PlayerOnGetTrailColor(On.Celeste.Player.orig_GetTrailColor orig, Player self, bool wasDashB)
+        {
+            // same color as BadelineOldsite 
+            if (Settings.Enabled && Settings.Badeline)
+                return wasDashB ? Player.NormalBadelineHairColor : Player.NormalHairColor;
+
+            return orig(self, wasDashB);
+        }
+
+        private static void Sprite_Play(On.Monocle.Sprite.orig_Play orig, Monocle.Sprite self, string id, bool restart,
+            bool randomizeFrame)
+        {
+            try
             {
                 orig(self, id, restart, randomizeFrame);
             }
+#pragma warning disable RECS0022 // A catch clause that catches System.Exception and has an empty body
+            catch { }
+#pragma warning restore RECS0022 // A catch clause that catches System.Exception and has an empty body
         }
-
 
         private void Player_Update(On.Celeste.Player.orig_Update orig, Player self)
         {
-            //Logger.Log("w", self.GetType().ToString());
-            if (self.GetType().Name == "Ghost")
+            if (Settings.Enabled != _enabled || Settings.Badeline != _badeline || Settings.Dash0Color != _dash0Color ||
+                Settings.Dash1Color != _dash1Color || Settings.Dash2Color != _dash2Color)
+            {
+                _enabled = Settings.Enabled;
+                _badeline = Settings.Badeline;
+                _dash0Color = Settings.Dash0Color;
+                _dash1Color = Settings.Dash1Color;
+                _dash2Color = Settings.Dash2Color;
+                if (_enabled && !_badeline)
+                {
+                    _usedHairColor.SetValue(null, Calc.HexToColor(_dash0Color));
+                    _normalHairColor.SetValue(null, Calc.HexToColor(_dash1Color));
+                    _twoDashesHairColor.SetValue(null, Calc.HexToColor(_dash2Color));
+                }
+                else
+                {
+                    _usedHairColor.SetValue(null, _origUsedHairColor);
+                    _normalHairColor.SetValue(null, _origNormalHairColor);
+                    _twoDashesHairColor.SetValue(null, _origTwoDashesHairColor);
+                }
+
+                ResetSprite(self, _enabled && _badeline);
+            }
+
+            if (self.GetType().Name == "Ghost" || !Settings.Enabled)
             {
                 orig(self);
                 return;
             }
 
-            if (Settings.Enabled)
+            if (Settings.Badeline != _badeline)
             {
-                UsedHairColor.SetValue(null, Calc.HexToColor(Settings.Dash0Color));
-                NormalHairColor.SetValue(null, Calc.HexToColor(Settings.Dash1Color));
-                TwoDashesHairColor.SetValue(null, Calc.HexToColor(Settings.Dash2Color));
-            }
-            else
-            {
-                NormalHairColor.SetValue(null, Calc.HexToColor("AC3232"));
-                TwoDashesHairColor.SetValue(null, Calc.HexToColor("FF6DEF"));
-                UsedHairColor.SetValue(null, Calc.HexToColor("44B7FF"));
-                if ((Entity) self as BadelineOldsite != null) self.Sprite.HairCount = Settings.HairLength;
-            }
-
-            if (Settings.Badeline != (self.Sprite.Mode == PlayerSpriteMode.Badeline))
-            {
-                PlayerSpriteMode mode = self.Sprite.Mode;
-                self.Remove(self.Sprite);
-                if (Settings.Badeline)
-                    self.Sprite = new PlayerSprite(PlayerSpriteMode.Badeline);
-                else
-                    self.Sprite = new PlayerSprite(mode);
-
-                self.Remove(self.Hair);
-                self.Sprite.HairCount = Settings.HairLength;
-                self.Add(self.Hair = new PlayerHair(self.Sprite));
-                self.Add(self.Sprite);
-            }
-
-            //if (Settings.Badeline != Badeline)
-            //{
-            //    if (Settings.Badeline)
-            //    {
-            //        self.Remove(self.Sprite);
-            //        self.Sprite = new PlayerSprite(PlayerSpriteMode.Badeline);
-            //        self.Remove(self.Hair);
-            //        self.Add(self.Hair = new PlayerHair(self.Sprite));
-            //        self.Add(self.Sprite);
-            //        Logger.Log("w", self.GetType().ToString());
-            //    }
-            //    else
-            //    {
-            //        self.Remove(self.Sprite);
-            //        self.Sprite = new PlayerSprite(PlayerSpriteMode.Madeline);
-            //        self.Remove(self.Hair);
-            //        self.Add(self.Hair = new PlayerHair(self.Sprite));
-            //        self.Add(self.Sprite);
-            //    }
-            //    Badeline = Settings.Badeline;
-            //}
-            if (Settings.HairLength != HairCount && self.Sprite.Entity as Player != null)
-            {
-                self.Sprite.HairCount = Settings.HairLength;
-                HairCount = Settings.HairLength;
-                self.Remove(self.Hair);
-                self.Remove(self.Sprite);
-                self.Add(self.Hair = new PlayerHair(self.Sprite));
-                self.Add(self.Sprite);
+                _badeline = Settings.Badeline;
+                ResetSprite(self, _badeline);
             }
 
             if (Settings.BadelineFloat)
             {
-                if (Keyboard.GetState().IsKeyDown(Keys.A))
+                if (MInput.Keyboard.Check(Keys.A))
                 {
-                    Floating = true;
+                    _floating = true;
                     //self.Collidable = false;
                     //((Level)self.Scene).SolidTiles.Collidable = false;
                     self.DummyGravity = true;
@@ -226,18 +220,27 @@ namespace Celeste.Mod.Solid
                     self.Speed.Y = -15f;
                     if (Keyboard.GetState().IsKeyDown(Keys.P)) self.Speed.Y = Calc.Approach(self.Speed.Y, -120f, 360f);
 
-                    if (Keyboard.GetState().IsKeyDown(Keys.L)) self.Speed.X = Calc.Approach(self.Speed.X, -120f, 360f);
+                    if (Keyboard.GetState().IsKeyDown(Keys.L))
+                    {
+                        self.Speed.X = Calc.Approach(self.Speed.X, -120f, 360f);
+                        self.Facing = Facings.Left;
+                    }
 
-                    if (Keyboard.GetState().IsKeyDown(Keys.OemQuotes)) self.Speed.X = Calc.Approach(self.Speed.X, 120f, 360f);
+                    if (Keyboard.GetState().IsKeyDown(Keys.OemQuotes))
+                    {
+                        self.Speed.X = Calc.Approach(self.Speed.X, 120f, 360f);
+                        self.Facing = Facings.Right;
+                    }
 
-                    if (Keyboard.GetState().IsKeyDown(Keys.OemSemicolon)) self.Speed.Y = Calc.Approach(self.Speed.Y, 120f, 360f);
+                    if (Keyboard.GetState().IsKeyDown(Keys.OemSemicolon))
+                        self.Speed.Y = Calc.Approach(self.Speed.Y, 120f, 360f);
                 }
                 else
                 {
-                    if (Floating)
+                    if (_floating)
                     {
                         //self.Collidable = true;
-                        Floating = false;
+                        _floating = false;
                         self.DummyGravity = false;
                         //((Level)self.Scene).SolidTiles.Collidable = true;
                     }
@@ -247,131 +250,25 @@ namespace Celeste.Mod.Solid
             orig(self);
         }
 
-
-        private void Player_Respawn(On.Celeste.Player.orig_IntroRespawnBegin orig, Player self)
+        private static void ResetSprite(Player player, bool badeline)
         {
-            int dashes = self.MaxDashes;
-
-            if (dashes == 0)
-                permcolor = ColorFromHex(Settings.Dash0Color);
-
-            if (dashes == 1)
-                permcolor = ColorFromHex(Settings.Dash1Color);
-
-            if (dashes == 2)
-                permcolor = ColorFromHex(Settings.Dash2Color);
-
-            orig(self);
-        }
-
-        private void Death(On.Celeste.DeathEffect.orig_Draw orig, Vector2 position, Color color, float ease)
-        {
-            if (Settings.Enabled) color = permcolor;
-
-            orig(position, color, ease);
-        }
-
-        //public static Color GetHairColor(On.Celeste.PlayerHair.orig_GetHairColor orig, PlayerHair self, int index)
-        //{
-        //    Color colorOrig = orig(self, index);
-        //    if (!(self.Entity is Player) || self.GetSprite().Mode == PlayerSpriteMode.Badeline)
-        //        return colorOrig;
-
-        //    if ((self.Entity as Player).StateMachine.State == 19)
-        //        return colorOrig;
-
-        //    Color color = colorOrig;
-
-        //    int dashes = ((Player)self.Entity).Dashes;
-
-        //    if (dashes == 0)
-        //        color = ColorFromHex(Settings.Dash0Color);
-
-        //    if (dashes == 1)
-        //        color = ColorFromHex(Settings.Dash1Color);
-
-        //    if (dashes == 2)
-        //        color = ColorFromHex(Settings.Dash2Color);
-
-        //    permcolor = color;
-
-        //    color.A = colorOrig.A;
-        //    if (Settings.Enabled)
-        //    {
-        //        return color;
-        //    }
-        //    else
-        //    {
-        //        return colorOrig;
-        //    }
-        //}
-
-        private static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity self, Color color, float duration)
-        {
-            Color colorOrig = color;
-
-            if (self is Player player)
+            PlayerSpriteMode mode;
+            if (badeline || SaveData.Instance.Assists.PlayAsBadeline)
             {
-                if (player.Sprite.Mode == PlayerSpriteMode.Badeline)
-                {
-                    orig(self, ColorFromHex("ff0019"), duration);
-                    return;
-                }
-
-                Color newColor = color;
-
-                if (player.StateMachine.State == 19)
-                    return;
-
-                int dashes = player.Dashes;
-
-                if (dashes == 0)
-                    newColor = ColorFromHex(Settings.Dash0Color);
-
-                if (dashes == 1)
-                    newColor = ColorFromHex(Settings.Dash1Color);
-
-                if (dashes == 2)
-                    newColor = ColorFromHex(Settings.Dash2Color);
-
-                color.A = colorOrig.A;
-                if (Settings.Enabled)
-                    orig(self, newColor, duration);
-                else
-                    orig(self, colorOrig, duration);
+                mode = PlayerSpriteMode.Badeline;
             }
-        }
+            else if (player.SceneAs<Level>().Session.Inventory.Backpack)
+            {
+                mode = PlayerSpriteMode.Madeline;
+            }
+            else
+            {
+                mode = PlayerSpriteMode.MadelineNoBackpack;
+            }
 
-        private static Color GetTrailColor(On.Celeste.Player.orig_GetTrailColor orig, Player self, bool wasDashB)
-        {
-            Color colorOrig = orig(self, wasDashB);
-
-            Color color = colorOrig;
-
-            if (self == null)
-                return colorOrig;
-
-            if (self.Sprite.Mode == PlayerSpriteMode.Badeline)
-                return colorOrig;
-
-            int dashes = self.Dashes;
-
-            if (dashes == 0)
-                color = ColorFromHex(Settings.Dash0Color);
-
-            if (dashes == 1)
-                color = ColorFromHex(Settings.Dash1Color);
-
-            if (dashes == 2)
-                color = ColorFromHex(Settings.Dash2Color);
-
-            color.A = colorOrig.A;
-            return color;
-        }
-
-        private static Color ColorFromHex(string hex)
-        {
-            return Calc.HexToColor(hex);
+            player.Remove(player.Sprite);
+            player.Add(player.Sprite = new PlayerSprite(mode));
+            player.Hair.Sprite = player.Sprite;
         }
     }
 }
