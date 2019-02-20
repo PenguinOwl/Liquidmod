@@ -1,24 +1,23 @@
 ﻿using System;
-using System.Globalization;
 using System.Reflection;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using Monocle;
-using On.Celeste;
+using On.Monocle;
+using Calc = Monocle.Calc;
+using Entity = Monocle.Entity;
 
 namespace Celeste.Mod.Solid
 {
     public class SolidModule : EverestModule
     {
-
         // Only one alive module instance can exist at any given time.
         public static SolidModule Instance;
 
         private static Color permcolor;
 
-        private static FieldInfo UsedHairColor = typeof(Player).GetField("UsedHairColor");
-        private static FieldInfo NormalHairColor = typeof(Player).GetField("NormalHairColor");
-        private static FieldInfo TwoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
+        private static readonly FieldInfo UsedHairColor = typeof(Player).GetField("UsedHairColor");
+        private static readonly FieldInfo NormalHairColor = typeof(Player).GetField("NormalHairColor");
+        private static readonly FieldInfo TwoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
 
         private static bool Badeline;
 
@@ -32,7 +31,7 @@ namespace Celeste.Mod.Solid
 
         // If you don't need to store any settings, => null
         public override Type SettingsType => typeof(SolidSettings);
-        public static SolidSettings Settings => (SolidSettings)Instance._Settings;
+        public static SolidSettings Settings => (SolidSettings) Instance._Settings;
 
         // If you don't need to store any save data, => null
         public override Type SaveDataType => null;
@@ -42,16 +41,41 @@ namespace Celeste.Mod.Solid
         // Load runs before Celeste itself has initialized properly.
         public override void Load()
         {
-            On.Celeste.Player.GetTrailColor += GetTrailColor;
             //On.Celeste.PlayerHair.GetHairColor += GetHairColor;
+            On.Celeste.Player.GetTrailColor += GetTrailColor;
             On.Celeste.TrailManager.Add_Entity_Color_float += AddTrail;
             On.Celeste.DeathEffect.Draw += Death;
             On.Celeste.Player.IntroRespawnBegin += Player_Respawn;
             On.Celeste.Player.Update += Player_Update;
-            On.Monocle.Sprite.Play += Sprite_Play;
+            Sprite.Play += Sprite_Play;
             On.Celeste.PlayerHair.Render += PlayerHair_Render;
             On.Celeste.PlayerHair.Update += PlayerHair_Update;
         }
+
+
+        // Optional, initialize anything after Celeste has initialized itself properly.
+        public override void Initialize()
+        { }
+
+        // Optional, do anything requiring either the Celeste or mod content here.
+        //public override void LoadContent()
+        //{
+        //}
+
+        // Unload the entirety of your mod's content, remove any event listeners and undo all hooks.
+        public override void Unload()
+        {
+            //On.Celeste.PlayerHair.GetHairColor -= GetHairColor;
+            On.Celeste.Player.GetTrailColor -= GetTrailColor;
+            On.Celeste.TrailManager.Add_Entity_Color_float -= AddTrail;
+            On.Celeste.DeathEffect.Draw -= Death;
+            On.Celeste.Player.IntroRespawnBegin -= Player_Respawn;
+            On.Celeste.Player.Update -= Player_Update;
+            Sprite.Play -= Sprite_Play;
+            On.Celeste.PlayerHair.Render -= PlayerHair_Render;
+            On.Celeste.PlayerHair.Update -= PlayerHair_Update;
+        }
+
 
         private void Player_Added(On.Celeste.Player.orig_Render orig, Player self)
         {
@@ -74,9 +98,9 @@ namespace Celeste.Mod.Solid
             orig(self);
         }
 
-        void PlayerHair_Update(On.Celeste.PlayerHair.orig_Update orig, PlayerHair self)
+        private void PlayerHair_Update(On.Celeste.PlayerHair.orig_Update orig, PlayerHair self)
         {
-            if ((self.Entity as BadelineOldsite) == null && ((self.Entity as Player) != null && Settings.HairLength != HairCount))
+            if (self.Entity as BadelineOldsite == null && self.Entity as Player != null && Settings.HairLength != HairCount)
             {
                 Player player = self.Entity as Player;
                 player.Sprite.HairCount = Settings.HairLength;
@@ -87,21 +111,21 @@ namespace Celeste.Mod.Solid
                 player.Add(player.Hair = new PlayerHair(player.Sprite));
                 player.Add(player.Sprite);
             }
-            if ((self.Entity as BadelineOldsite) == null && (self.Entity as Player) != null) {
-                self.Sprite.HairCount = Settings.HairLength;
-            }
+
+            if (self.Entity as BadelineOldsite == null && self.Entity as Player != null) self.Sprite.HairCount = Settings.HairLength;
+
             orig(self);
         }
 
 
-        void PlayerHair_Render(On.Celeste.PlayerHair.orig_Render orig, PlayerHair self)
+        private void PlayerHair_Render(On.Celeste.PlayerHair.orig_Render orig, PlayerHair self)
         {
             //self.Sprite.HairCount = Settings.HairLength;
             orig(self);
         }
 
 
-        private void Sprite_Play(On.Monocle.Sprite.orig_Play orig, Sprite self, string id, bool restart, bool randomizeFrame)
+        private void Sprite_Play(Sprite.orig_Play orig, Monocle.Sprite self, string id, bool restart, bool randomizeFrame)
         {
             if (Settings.Badeline)
             {
@@ -110,7 +134,8 @@ namespace Celeste.Mod.Solid
                     orig(self, id, restart, randomizeFrame);
                 }
 #pragma warning disable RECS0022 // A catch clause that catches System.Exception and has an empty body
-                catch { }
+                catch
+                { }
 #pragma warning restore RECS0022 // A catch clause that catches System.Exception and has an empty body
             }
             else
@@ -128,6 +153,7 @@ namespace Celeste.Mod.Solid
                 orig(self);
                 return;
             }
+
             if (Settings.Enabled)
             {
                 UsedHairColor.SetValue(null, Calc.HexToColor(Settings.Dash0Color));
@@ -139,28 +165,24 @@ namespace Celeste.Mod.Solid
                 NormalHairColor.SetValue(null, Calc.HexToColor("AC3232"));
                 TwoDashesHairColor.SetValue(null, Calc.HexToColor("FF6DEF"));
                 UsedHairColor.SetValue(null, Calc.HexToColor("44B7FF"));
-                if (((Entity)self as BadelineOldsite) != null)
-                {
-                    self.Sprite.HairCount = Settings.HairLength;
-                }
+                if ((Entity) self as BadelineOldsite != null) self.Sprite.HairCount = Settings.HairLength;
             }
-            if ((Settings.Badeline) != (self.Sprite.Mode == PlayerSpriteMode.Badeline))
+
+            if (Settings.Badeline != (self.Sprite.Mode == PlayerSpriteMode.Badeline))
             {
                 PlayerSpriteMode mode = self.Sprite.Mode;
                 self.Remove(self.Sprite);
                 if (Settings.Badeline)
-                {
                     self.Sprite = new PlayerSprite(PlayerSpriteMode.Badeline);
-                }
                 else
-                {
                     self.Sprite = new PlayerSprite(mode);
-                }
+
                 self.Remove(self.Hair);
                 self.Sprite.HairCount = Settings.HairLength;
                 self.Add(self.Hair = new PlayerHair(self.Sprite));
                 self.Add(self.Sprite);
             }
+
             //if (Settings.Badeline != Badeline)
             //{
             //    if (Settings.Badeline)
@@ -187,11 +209,11 @@ namespace Celeste.Mod.Solid
                 self.Sprite.HairCount = Settings.HairLength;
                 HairCount = Settings.HairLength;
                 self.Remove(self.Hair);
-                PlayerSpriteMode mode = self.Sprite.Mode;
                 self.Remove(self.Sprite);
                 self.Add(self.Hair = new PlayerHair(self.Sprite));
                 self.Add(self.Sprite);
             }
+
             if (Settings.BadelineFloat)
             {
                 if (Keyboard.GetState().IsKeyDown(Keys.A))
@@ -202,22 +224,13 @@ namespace Celeste.Mod.Solid
                     self.DummyGravity = true;
 
                     self.Speed.Y = -15f;
-                    if (Keyboard.GetState().IsKeyDown(Keys.P))
-                    {
-                        self.Speed.Y = Calc.Approach(self.Speed.Y, -120f, 360f);
-                    }
-                    if(Keyboard.GetState().IsKeyDown(Keys.L))
-                    {
-                        self.Speed.X = Calc.Approach(self.Speed.X, -120f, 360f);
-                    }
-                    if (Keyboard.GetState().IsKeyDown(Keys.OemQuotes))
-                    {
-                        self.Speed.X = Calc.Approach(self.Speed.X, 120f, 360f);
-                    }
-                    if (Keyboard.GetState().IsKeyDown(Keys.OemSemicolon))
-                    {
-                        self.Speed.Y = Calc.Approach(self.Speed.Y, 120f, 360f);
-                    }
+                    if (Keyboard.GetState().IsKeyDown(Keys.P)) self.Speed.Y = Calc.Approach(self.Speed.Y, -120f, 360f);
+
+                    if (Keyboard.GetState().IsKeyDown(Keys.L)) self.Speed.X = Calc.Approach(self.Speed.X, -120f, 360f);
+
+                    if (Keyboard.GetState().IsKeyDown(Keys.OemQuotes)) self.Speed.X = Calc.Approach(self.Speed.X, 120f, 360f);
+
+                    if (Keyboard.GetState().IsKeyDown(Keys.OemSemicolon)) self.Speed.Y = Calc.Approach(self.Speed.Y, 120f, 360f);
                 }
                 else
                 {
@@ -230,13 +243,14 @@ namespace Celeste.Mod.Solid
                     }
                 }
             }
+
             orig(self);
         }
 
 
         private void Player_Respawn(On.Celeste.Player.orig_IntroRespawnBegin orig, Player self)
         {
-            int dashes = (self).MaxDashes;
+            int dashes = self.MaxDashes;
 
             if (dashes == 0)
                 permcolor = ColorFromHex(Settings.Dash0Color);
@@ -252,35 +266,9 @@ namespace Celeste.Mod.Solid
 
         private void Death(On.Celeste.DeathEffect.orig_Draw orig, Vector2 position, Color color, float ease)
         {
-            if (Settings.Enabled)
-            {
-                color = permcolor;
-            }
+            if (Settings.Enabled) color = permcolor;
+
             orig(position, color, ease);
-        }
-
-        // Optional, initialize anything after Celeste has initialized itself properly.
-        public override void Initialize()
-        {
-        }
-
-        // Optional, do anything requiring either the Celeste or mod content here.
-        //public override void LoadContent()
-        //{
-        //}
-
-        // Unload the entirety of your mod's content, remove any event listeners and undo all hooks.
-        public override void Unload()
-        {
-            //On.Celeste.PlayerHair.GetHairColor -= GetHairColor;
-            On.Celeste.Player.GetTrailColor -= GetTrailColor;
-            On.Celeste.TrailManager.Add_Entity_Color_float -= AddTrail;
-            On.Celeste.DeathEffect.Draw -= Death;
-            On.Celeste.Player.IntroRespawnBegin -= Player_Respawn;
-            On.Celeste.Player.Update -= Player_Update;
-            On.Monocle.Sprite.Play -= Sprite_Play;
-            On.Celeste.PlayerHair.Render -= PlayerHair_Render;
-            On.Celeste.PlayerHair.Update -= PlayerHair_Update;
         }
 
         //public static Color GetHairColor(On.Celeste.PlayerHair.orig_GetHairColor orig, PlayerHair self, int index)
@@ -318,28 +306,24 @@ namespace Celeste.Mod.Solid
         //    }
         //}
 
-        public static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity self, Color color, float duration)
+        private static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity self, Color color, float duration)
         {
             Color colorOrig = color;
 
-            if (!(self is Player))
-                return;
-
-            if ((self as Player).Sprite.Mode == PlayerSpriteMode.Badeline)
+            if (self is Player player)
             {
-                orig(self, ColorFromHex("ff0019"), duration);
-                return;
-            }
+                if (player.Sprite.Mode == PlayerSpriteMode.Badeline)
+                {
+                    orig(self, ColorFromHex("ff0019"), duration);
+                    return;
+                }
 
-            Color newColor = color;
+                Color newColor = color;
 
-            if ((self as Player).StateMachine.State == 19)
-                return;
+                if (player.StateMachine.State == 19)
+                    return;
 
-            if (self is Player)
-            {
-
-                int dashes = ((Player)self).Dashes;
+                int dashes = player.Dashes;
 
                 if (dashes == 0)
                     newColor = ColorFromHex(Settings.Dash0Color);
@@ -350,32 +334,25 @@ namespace Celeste.Mod.Solid
                 if (dashes == 2)
                     newColor = ColorFromHex(Settings.Dash2Color);
 
-            }
-
-            color.A = colorOrig.A;
-            if (Settings.Enabled)
-            {
-                orig(self, newColor, duration);
-            }
-            else
-            {
-                orig(self, colorOrig, duration);
+                color.A = colorOrig.A;
+                if (Settings.Enabled)
+                    orig(self, newColor, duration);
+                else
+                    orig(self, colorOrig, duration);
             }
         }
 
-        public static Color GetTrailColor(On.Celeste.Player.orig_GetTrailColor orig, Player self, bool wasDashB)
+        private static Color GetTrailColor(On.Celeste.Player.orig_GetTrailColor orig, Player self, bool wasDashB)
         {
             Color colorOrig = orig(self, wasDashB);
 
             Color color = colorOrig;
 
-            if (!(self is Player))
+            if (self == null)
                 return colorOrig;
 
-            if ((self as Player).Sprite.Mode == PlayerSpriteMode.Badeline)
-            {
+            if (self.Sprite.Mode == PlayerSpriteMode.Badeline)
                 return colorOrig;
-            }
 
             int dashes = self.Dashes;
 
@@ -392,7 +369,8 @@ namespace Celeste.Mod.Solid
             return color;
         }
 
-        private static Color ColorFromHex(string hex) {
+        private static Color ColorFromHex(string hex)
+        {
             return Calc.HexToColor(hex);
         }
     }
