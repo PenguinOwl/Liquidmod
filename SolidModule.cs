@@ -196,7 +196,7 @@ namespace Celeste.Mod.Solid
                 ResetSprite(self, _enabled && _badeline);
             }
 
-            if (self.GetType().Name == "Ghost" || !Settings.Enabled)
+            if (!Settings.Enabled)
             {
                 orig(self);
                 return;
