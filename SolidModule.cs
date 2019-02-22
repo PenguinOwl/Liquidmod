@@ -76,6 +76,7 @@ namespace Celeste.Mod.Solid
             On.Celeste.Player.GetTrailColor -= PlayerOnGetTrailColor;
             On.Celeste.Player.ctor -= PlayerOnCtor;
             On.Celeste.PlayerHair.Update -= PlayerHairOnUpdate;
+            On.Celeste.TrailManager.Add_Entity_Color_float -= AvoidChangeBadelineColor;
             On.Monocle.Sprite.Play -= Sprite_Play;
         }
 
