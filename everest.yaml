@@ -1,5 +1,5 @@
 ﻿- Name: SolidMod
-  Version: 2.3.0
+  Version: 2.3.1
   DLL: SolidMod.dll
   Dependencies:
     - Name: Everest
