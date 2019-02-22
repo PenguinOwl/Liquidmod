@@ -53,7 +53,7 @@ namespace Celeste.Mod.Solid
             On.Celeste.Player.GetTrailColor += PlayerOnGetTrailColor;
             On.Celeste.Player.ctor += PlayerOnCtor;
             On.Celeste.PlayerHair.Update += PlayerHairOnUpdate;
-            On.Celeste.TrailManager.Add_Entity_Color_float += TrailManagerOnAddEntityColorFloat;
+            On.Celeste.TrailManager.Add_Entity_Color_float += AvoidChangeBadelineColor;
             On.Monocle.Sprite.Play += Sprite_Play;
         }
 
@@ -78,29 +78,6 @@ namespace Celeste.Mod.Solid
             On.Celeste.PlayerHair.Update -= PlayerHairOnUpdate;
             On.Monocle.Sprite.Play -= Sprite_Play;
         }
-        
-        
-        // Avoid badeline color changes
-        private void TrailManagerOnAddEntityColorFloat(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity entity, Color color, float duration)
-        {
-
-            if (entity is Player)
-            {
-                orig(entity, color, duration);
-                return;
-            }
-
-            if (color == (Color) _normalHairColor.GetValue(null))
-            {
-                color = _origNormalHairColor;
-            }
-            else if(color == (Color) _twoDashesHairColor.GetValue(null))
-            {
-                color = _origTwoDashesHairColor;
-            }
-
-            orig(entity, color, duration);
-        }
 
         private void PlayerOnCtor(On.Celeste.Player.orig_ctor orig, Player self, Vector2 position,
             PlayerSpriteMode spriteMode)
@@ -112,6 +89,24 @@ namespace Celeste.Mod.Solid
 
             if (Settings.Enabled && Settings.Badeline)
                 ResetSprite(self, true);
+        }
+        
+        
+        private void AvoidChangeBadelineColor(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity entity, Color color, float duration)
+        {
+            if (entity is BadelineBoost || entity is BadelineOldsite || entity is FinalBoss || entity is CS06_StarJumpEnd || entity is CS07_Credits)
+            {
+                if (color == (Color) _normalHairColor.GetValue(null))
+                {
+                    color = _origNormalHairColor;
+                }
+                else if (color == (Color) _twoDashesHairColor.GetValue(null))
+                {
+                    color = _origTwoDashesHairColor;
+                }
+            }
+
+            orig(entity, color, duration);
         }
 
         private IEnumerator SetFlyHairCount(Player player)
@@ -188,7 +183,8 @@ namespace Celeste.Mod.Solid
                 orig(self, id, restart, randomizeFrame);
             }
 #pragma warning disable RECS0022 // A catch clause that catches System.Exception and has an empty body
-            catch { }
+            catch
+            { }
 #pragma warning restore RECS0022 // A catch clause that catches System.Exception and has an empty body
         }
 
