@@ -53,12 +53,11 @@ namespace Celeste.Mod.Solid
             On.Celeste.Player.GetTrailColor += PlayerOnGetTrailColor;
             On.Celeste.Player.ctor += PlayerOnCtor;
             On.Celeste.PlayerHair.Update += PlayerHairOnUpdate;
+            On.Celeste.TrailManager.Add_Entity_Color_float += TrailManagerOnAddEntityColorFloat;
             On.Monocle.Sprite.Play += Sprite_Play;
         }
 
-
         // Optional, initialize anything after Celeste has initialized itself properly.
-
         public override void Initialize()
         {
             _dash0Color = Settings.Dash0Color;
@@ -78,6 +77,29 @@ namespace Celeste.Mod.Solid
             On.Celeste.Player.ctor -= PlayerOnCtor;
             On.Celeste.PlayerHair.Update -= PlayerHairOnUpdate;
             On.Monocle.Sprite.Play -= Sprite_Play;
+        }
+        
+        
+        // Avoid badeline color changes
+        private void TrailManagerOnAddEntityColorFloat(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity entity, Color color, float duration)
+        {
+
+            if (entity is Player)
+            {
+                orig(entity, color, duration);
+                return;
+            }
+
+            if (color == (Color) _normalHairColor.GetValue(null))
+            {
+                color = _origNormalHairColor;
+            }
+            else if(color == (Color) _twoDashesHairColor.GetValue(null))
+            {
+                color = _origTwoDashesHairColor;
+            }
+
+            orig(entity, color, duration);
         }
 
         private void PlayerOnCtor(On.Celeste.Player.orig_ctor orig, Player self, Vector2 position,
