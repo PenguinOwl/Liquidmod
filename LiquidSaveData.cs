@@ -7,13 +7,13 @@ using System.Text;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace Celeste.Mod.Solid
+namespace Celeste.Mod.Liquid
 {
     // If no SettingName is applied, it defaults to
     // modoptions_[typename without settings]_title
     // The value is then used to look up the UI text in the dialog files.
     // If no dialog text can be found, Everest shows a prettified mod name instead.
-    public class SolidSaveData : EverestModuleSaveData
+    public class LiquidSaveData : EverestModuleSaveData
     {
 
         // SettingName also works on props, defaulting to

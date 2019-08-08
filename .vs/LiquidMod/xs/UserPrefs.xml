@@ -1,18 +1,21 @@
-﻿<Properties StartupConfiguration="{B6A08C1E-96FA-4C66-81C3-F2B73DFC349D}|Default">
-  <MonoDevelop.Ide.ItemProperties.SolidMod PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="SolidSettings.cs">
+﻿<Properties>
+  <MonoDevelop.Ide.ItemProperties.LiquidMod PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workbench>
     <Files>
-      <File FileName="SolidSettings.cs" Line="29" Column="34" />
-      <File FileName="../everest.yaml" Line="3" Column="16" />
+      <File FileName="LiquidSettings.cs" Line="17" Column="30" />
       <File FileName="../../../../../../../../../Projects/BGswitch/BGswitch.cs" Line="48" Column="13" />
       <File FileName="../../../../../../../../../Projects/BGswitch/Switch.cs" Line="195" Column="1" />
+      <File FileName="LiquidSaveData.cs" Line="16" Column="32" />
+      <File FileName="LiquidMod.cs" Line="46" Column="36" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State name="__root__">
-          <Node name="SolidMod" expanded="True">
-            <Node name="SolidMod" expanded="True">
+          <Node name="LiquidMod" expanded="True">
+            <Node name="LiquidMod" expanded="True">
               <Node name="References" expanded="True" />
+              <Node name="Properties" expanded="True" />
+              <Node name="LiquidMod.cs" selected="True" />
             </Node>
           </Node>
         </State>
