@@ -18,6 +18,8 @@ namespace Celeste.Mod.Liquid
     {
         public bool Enabled { get; set; } = true;
 
+        public bool RainbowTrail { get; set; } = true;
+
         public string Dash0Color { get; set; } = "ffffff";
 
         public string Dash1Color { get; set; } = "ffffff";

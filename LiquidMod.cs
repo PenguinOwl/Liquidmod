@@ -20,6 +20,18 @@ namespace Celeste.Mod.Liquid
         private static FieldInfo NormalHairColor = typeof(Player).GetField("NormalHairColor");
         private static FieldInfo TwoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
 
+        private static Color DashTrail(int hue)
+        {
+            return DashTrail(hue / 360f);
+        }
+
+        private static Color DashTrail(float hue)
+        {
+            return Calc.HsvToColor(hue, 0.7f, 0.67f);
+        }
+
+        public static int RainbowTrailHue = 0;
+
         public LiquidMod()
         {
             Instance = this;
@@ -37,6 +49,7 @@ namespace Celeste.Mod.Liquid
         // Load runs before Celeste itself has initialized properly.
         public override void Load()
         {
+
             On.Celeste.Player.GetTrailColor += GetTrailColor;
             //On.Celeste.PlayerHair.GetHairColor += GetHairColor;
             On.Celeste.TrailManager.Add_Entity_Color_float += AddTrail;
@@ -44,7 +57,7 @@ namespace Celeste.Mod.Liquid
             On.Celeste.Player.IntroRespawnBegin += Player_Respawn;
             On.Celeste.Player.Update += Player_Update;
             On.Celeste.PlayerHair.AfterUpdate += PlayerHair_AfterUpdate;
-            On.Celeste.PlayerHair.Render += PlayerHair_Render;;
+            On.Celeste.PlayerHair.Render += PlayerHair_Render;
             //    On.Monocle.ParticleSystem.Emit_ParticleType_Vector2_float += ParticleSystem_Emit_ParticleType_Vector2_Float;
         }
 
@@ -164,6 +177,12 @@ namespace Celeste.Mod.Liquid
                 TwoDashesHairColor.SetValue(null, Calc.HexToColor(Settings.Dash2Color));
                 Player.P_DashA.Color = Calc.HexToColor(Settings.Dash0Color);
                 Player.P_DashB.Color = Calc.HexToColor(Settings.Dash1Color);
+
+                // Degree overflow
+                if (Settings.RainbowTrail)
+                    RainbowTrailHue = (RainbowTrailHue >= 360)
+                        ? 1
+                        : RainbowTrailHue + 3;
             }
             else
             {
@@ -293,6 +312,7 @@ namespace Celeste.Mod.Liquid
         //    }
         //}
 
+        #region Dash Trail hooks
         public static void AddTrail(On.Celeste.TrailManager.orig_Add_Entity_Color_float orig, Entity self, Color color, float duration)
         {
             //if (Settings.Enabled)
@@ -347,6 +367,7 @@ namespace Celeste.Mod.Liquid
             Color colorOrig = orig(self, wasDashB);
 
             Color color = colorOrig;
+            if (Settings.Enabled && Settings.RainbowTrail) color = DashTrail(RainbowTrailHue);
 
             //if (!(self is Player))
             //    return colorOrig;
@@ -370,6 +391,7 @@ namespace Celeste.Mod.Liquid
             //color.A = colorOrig.A;
             return color;
         }
+        #endregion
 
         public static Color ColorFromHex(string colorcode)
         {
