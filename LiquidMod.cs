@@ -20,16 +20,6 @@ namespace Celeste.Mod.Liquid
         private static FieldInfo NormalHairColor = typeof(Player).GetField("NormalHairColor");
         private static FieldInfo TwoDashesHairColor = typeof(Player).GetField("TwoDashesHairColor");
 
-        private static Color DashTrail(int hue)
-        {
-            return DashTrail(hue / 360f);
-        }
-
-        private static Color DashTrail(float hue)
-        {
-            return Calc.HsvToColor(hue, 0.7f, 0.67f);
-        }
-
         public static int RainbowTrailHue = 0;
 
         public LiquidMod()
@@ -180,9 +170,10 @@ namespace Celeste.Mod.Liquid
 
                 // Degree overflow
                 if (Settings.RainbowTrail)
-                    RainbowTrailHue = (RainbowTrailHue >= 360)
-                        ? 1
-                        : RainbowTrailHue + 3;
+                {
+                    RainbowTrailHue += 3;
+                    RainbowTrailHue %= 360;
+                }
             }
             else
             {
@@ -367,7 +358,8 @@ namespace Celeste.Mod.Liquid
             Color colorOrig = orig(self, wasDashB);
 
             Color color = colorOrig;
-            if (Settings.Enabled && Settings.RainbowTrail) color = DashTrail(RainbowTrailHue);
+            if (Settings.Enabled && Settings.RainbowTrail)
+                color = Calc.HsvToColor(RainbowTrailHue / 360f, 0.7f, 0.67f);
 
             //if (!(self is Player))
             //    return colorOrig;
